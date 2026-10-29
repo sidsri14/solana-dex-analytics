@@ -2,6 +2,27 @@ export const PUMP_FUN_PROGRAM_ID = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"
 export const PUMP_FUN_FEE_RECIPIENT = "CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM";
 export const INITIAL_REAL_TOKEN_RESERVES = 793_100_000_000_000n; // 793.1M tokens with 6 decimals
 export const GRADUATION_REAL_SOL_TARGET = 85_000_000_000n; // 85 SOL in lamports
+export const RAYDIUM_FEE_BPS = 25n; // 0.25% fee (25 bps)
+export const RAYDIUM_MIGRATION_FEE_SOL = 6_000_000_000n; // 6 SOL migration fee
+export const RAYDIUM_MIGRATION_TOKEN_RESERVE = 206_900_000_000_000n; // 206.9M tokens deposited
+
+export interface RaydiumPoolState {
+  mint: string;
+  solReservesLamports: bigint;
+  tokenReservesUnits: bigint;
+  lpSupply: bigint;
+  priceSolPerToken: number;
+}
+
+export interface SwapSimulationResult {
+  amountIn: bigint;
+  amountOut: bigint;
+  feeAmount: bigint;
+  effectivePrice: number;
+  priceImpactPercent: number;
+  newSolReserves: bigint;
+  newTokenReserves: bigint;
+}
 
 export interface PumpTradeEvent {
   mint: string;

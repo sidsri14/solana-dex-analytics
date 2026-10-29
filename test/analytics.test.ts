@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { BondingCurveModel } from "../src/bonding-curve.js";
 import { WalletScorer } from "../src/wallet-scorer.js";
 import { PumpFunLogParser } from "../src/parser.js";
+import { RaydiumMigrationModel } from "../src/raydium-migration.js";
 import { type PumpTradeEvent } from "../src/types.js";
 
 test("Bonding Curve: accurately computes price, market cap, and graduation progress", () => {
@@ -132,4 +133,45 @@ test("Log Parser: extracts Pump.fun buy, sell, and create instructions from tran
   assert.equal(parsed.trades.length, 2);
   assert.equal(parsed.trades[0].isBuy, true);
   assert.equal(parsed.trades[1].isBuy, false);
+});
+
+test("Raydium Migration: creates CPMM pool with fee deduction and valid LP supply", () => {
+  const mint = "MigratedMint11111111111111111111111111111111";
+  const realSol = 85_000_000_000n; // 85 SOL at graduation
+
+  const pool = RaydiumMigrationModel.createMigratedPool(mint, realSol);
+
+  // 85 SOL - 6 SOL migration fee = 79 SOL
+  assert.equal(pool.solReservesLamports, 79_000_000_000n);
+  assert.equal(pool.tokenReservesUnits, 206_900_000_000_000n);
+  assert.ok(pool.lpSupply > 0n);
+  assert.ok(pool.priceSolPerToken > 0);
+});
+
+test("Raydium Migration: simulates buy with 0.25% fee and price impact", () => {
+  const mint = "MigratedMint11111111111111111111111111111111";
+  const pool = RaydiumMigrationModel.createMigratedPool(mint, 85_000_000_000n);
+
+  const buySim = RaydiumMigrationModel.simulateBuy(pool, 5_000_000_000n); // 5 SOL buy
+
+  assert.equal(buySim.amountIn, 5_000_000_000n);
+  // 5 SOL * 0.25% = 12,500,000 lamports fee
+  assert.equal(buySim.feeAmount, 12_500_000n);
+  assert.ok(buySim.amountOut > 0n);
+  assert.ok(buySim.priceImpactPercent > 0);
+  assert.ok(buySim.effectivePrice > pool.priceSolPerToken);
+});
+
+test("Raydium Migration: simulates sell with 0.25% fee and price impact", () => {
+  const mint = "MigratedMint11111111111111111111111111111111";
+  const pool = RaydiumMigrationModel.createMigratedPool(mint, 85_000_000_000n);
+
+  const tokensToSell = 5_000_000_000_000n; // 5M tokens
+  const sellSim = RaydiumMigrationModel.simulateSell(pool, tokensToSell);
+
+  assert.equal(sellSim.amountIn, tokensToSell);
+  assert.equal(sellSim.feeAmount, (tokensToSell * 25n) / 10000n);
+  assert.ok(sellSim.amountOut > 0n);
+  assert.ok(sellSim.priceImpactPercent >= 0);
+  assert.ok(sellSim.effectivePrice < pool.priceSolPerToken);
 });

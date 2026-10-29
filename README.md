@@ -2,7 +2,7 @@
 
 High-performance TypeScript analytics engine for Solana memecoin bonding curves, decentralized exchange migrations, and smart-money wallet profiling.
 
-[![Test Status](https://img.shields.io/badge/tests-4%2F4%20passing-brightgreen)](#)
+[![Test Status](https://img.shields.io/badge/tests-7%2F7%20passing-brightgreen)](#)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -15,12 +15,17 @@ High-performance TypeScript analytics engine for Solana memecoin bonding curves,
    - Calculates real-time price in SOL, fully diluted market cap, and Raydium graduation progress towards the 85 SOL target.
    - Zero floating-point rounding issues via standard AMM integer division with directional remainder handling.
 
-2. **Smart-Money Wallet Profiler**:
+2. **Raydium CPMM Pool Modeling & Slippage Simulator**:
+   - Models post-graduation liquidity migration (85 SOL minus 6 SOL migration fee = 79 SOL seed + 206.9M tokens).
+   - Computes integer square root LP token supply initialization.
+   - Simulates Raydium CPMM swaps (SOL $\to$ Token and Token $\to$ SOL) with standard 0.25% fee (25 bps) and exact price impact percentage.
+
+3. **Smart-Money Wallet Profiler**:
    - Calculates realized profit & loss (PnL in SOL), total trading volume, win rate, and trade count across tokens.
    - Implements a composite scoring algorithm (0–100) weighting Win Rate (40%), Total PnL (40%), and Activity Volume (20%).
    - Classifies wallets into actionable tiers: `ELITE`, `PROFITABLE`, `NEUTRAL`, `UNPROFITABLE`.
 
-3. **Transaction Log Parser**:
+4. **Transaction Log Parser**:
    - Extracts Pump.fun program instruction logs from raw Solana RPC transaction logs.
    - Parses `Create`, `Buy`, and `Sell` events, extracting trader pubkey, mint pubkey, lamports, and token units.
 

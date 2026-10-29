@@ -2,9 +2,11 @@ export * from "./types.js";
 export * from "./bonding-curve.js";
 export * from "./wallet-scorer.js";
 export * from "./parser.js";
+export * from "./raydium-migration.js";
 
 import { BondingCurveModel } from "./bonding-curve.js";
 import { WalletScorer } from "./wallet-scorer.js";
+import { RaydiumMigrationModel } from "./raydium-migration.js";
 import { type PumpTradeEvent } from "./types.js";
 
 // CLI execution simulation
