@@ -1,0 +1,135 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { BondingCurveModel } from "../src/bonding-curve.js";
+import { WalletScorer } from "../src/wallet-scorer.js";
+import { PumpFunLogParser } from "../src/parser.js";
+import { type PumpTradeEvent } from "../src/types.js";
+
+test("Bonding Curve: accurately computes price, market cap, and graduation progress", () => {
+  const virtualSol = 30_000_000_000n; // 30 SOL
+  const virtualToken = 1_073_000_000_000_000n; // 1.073B tokens
+  const realSol = 42_500_000_000n; // 42.5 SOL (50% of 85 SOL target)
+  const realToken = 400_000_000_000_000n;
+
+  const state = BondingCurveModel.evaluateState(
+    "TestMint1111111111111111111111111111111111111",
+    virtualSol,
+    virtualToken,
+    realSol,
+    realToken
+  );
+
+  assert.equal(state.progressPercent, 50);
+  assert.equal(state.isComplete, false);
+  assert.ok(state.priceSolPerToken > 0);
+  assert.ok(state.marketCapSol > 0);
+});
+
+test("Bonding Curve: enforces constant product invariant k during buy and sell", () => {
+  const initialSol = 30_000_000_000n;
+  const initialToken = 1_000_000_000_000_000n;
+  const k = initialSol * initialToken;
+
+  // Buy 5 SOL
+  const buySim = BondingCurveModel.simulateBuy(initialSol, initialToken, 5_000_000_000n);
+  assert.equal(buySim.newVirtualSol, 35_000_000_000n);
+  assert.ok(buySim.tokenAmountUnits > 0n);
+
+  const kAfterBuy = buySim.newVirtualSol * buySim.newVirtualToken;
+  // Constant product precision check within integer rounding bounds
+  assert.ok(k - kAfterBuy < 35_000_000_000n);
+
+  // Sell same tokens back
+  const sellSim = BondingCurveModel.simulateSell(buySim.newVirtualSol, buySim.newVirtualToken, buySim.tokenAmountUnits);
+  assert.ok(sellSim.solAmountLamports > 0n);
+  assert.ok(sellSim.solAmountLamports <= 5_000_000_000n); // At most what was put in
+});
+
+test("Wallet Scorer: computes win rate, realized PnL, and assigns correct tiers", () => {
+  const scorer = new WalletScorer();
+
+  const traderA = "EliteTrader_001";
+  const traderB = "LossTrader_002";
+
+  // Trader A: buys 1 SOL, sells for 3 SOL (+2 SOL profit)
+  scorer.ingestTrade({
+    mint: "Mint1",
+    trader: traderA,
+    isBuy: true,
+    solAmountLamports: 1_000_000_000n,
+    tokenAmountUnits: 10_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 100,
+    timestamp: 1000,
+  });
+  scorer.ingestTrade({
+    mint: "Mint1",
+    trader: traderA,
+    isBuy: false,
+    solAmountLamports: 3_000_000_000n,
+    tokenAmountUnits: 10_000_000n,
+    virtualSolReserves: 32_000_000_000n,
+    virtualTokenReserves: 990_000_000_000_000n,
+    slot: 200,
+    timestamp: 2000,
+  });
+
+  // Trader B: buys 5 SOL, sells for 2 SOL (-3 SOL loss)
+  scorer.ingestTrade({
+    mint: "Mint2",
+    trader: traderB,
+    isBuy: true,
+    solAmountLamports: 5_000_000_000n,
+    tokenAmountUnits: 50_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 100,
+    timestamp: 1000,
+  });
+  scorer.ingestTrade({
+    mint: "Mint2",
+    trader: traderB,
+    isBuy: false,
+    solAmountLamports: 2_000_000_000n,
+    tokenAmountUnits: 50_000_000n,
+    virtualSolReserves: 27_000_000_000n,
+    virtualTokenReserves: 1_050_000_000_000_000n,
+    slot: 200,
+    timestamp: 2000,
+  });
+
+  const profileA = scorer.evaluateWallet(traderA);
+  const profileB = scorer.evaluateWallet(traderB);
+
+  assert.equal(profileA.winRate, 1.0);
+  assert.equal(profileA.realizedPnlSol, 2.0);
+  assert.ok(profileA.traderScore > profileB.traderScore);
+
+  assert.equal(profileB.winRate, 0.0);
+  assert.equal(profileB.realizedPnlSol, -3.0);
+
+  const leaderboard = scorer.getLeaderboard(2);
+  assert.equal(leaderboard[0].wallet, traderA);
+  assert.equal(leaderboard[1].wallet, traderB);
+});
+
+test("Log Parser: extracts Pump.fun buy, sell, and create instructions from transaction logs", () => {
+  const mockLogs = [
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]",
+    "Program log: Instruction: Create",
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success",
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]",
+    "Program log: Instruction: Buy",
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success",
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P invoke [1]",
+    "Program log: Instruction: Sell",
+    "Program 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P success",
+  ];
+
+  const parsed = PumpFunLogParser.parseTransactionLogs("mockSig", 280001000, mockLogs);
+  assert.equal(parsed.creations.length, 1);
+  assert.equal(parsed.trades.length, 2);
+  assert.equal(parsed.trades[0].isBuy, true);
+  assert.equal(parsed.trades[1].isBuy, false);
+});
