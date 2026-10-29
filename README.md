@@ -2,7 +2,7 @@
 
 High-performance TypeScript analytics engine for Solana memecoin bonding curves, decentralized exchange migrations, and smart-money wallet profiling.
 
-[![Test Status](https://img.shields.io/badge/tests-7%2F7%20passing-brightgreen)](#)
+[![Test Status](https://img.shields.io/badge/tests-9%2F9%20passing-brightgreen)](#)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -25,7 +25,12 @@ High-performance TypeScript analytics engine for Solana memecoin bonding curves,
    - Implements a composite scoring algorithm (0–100) weighting Win Rate (40%), Total PnL (40%), and Activity Volume (20%).
    - Classifies wallets into actionable tiers: `ELITE`, `PROFITABLE`, `NEUTRAL`, `UNPROFITABLE`.
 
-4. **Transaction Log Parser**:
+4. **Algorithmic Copy-Trade Signal Generator**:
+   - Evaluates incoming trade streams against profiled smart money.
+   - Triggers automated `COPY_BUY` signals when `Elite` or `Profitable` traders enter early curve phases (<30% progress).
+   - Emits `TAKE_PROFIT` / `COPY_SELL` signals on position exit while suppressing noise from unprofitable/retail wallets.
+
+5. **Transaction Log Parser**:
    - Extracts Pump.fun program instruction logs from raw Solana RPC transaction logs.
    - Parses `Create`, `Buy`, and `Sell` events, extracting trader pubkey, mint pubkey, lamports, and token units.
 

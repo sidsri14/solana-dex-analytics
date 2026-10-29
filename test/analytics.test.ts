@@ -4,6 +4,7 @@ import { BondingCurveModel } from "../src/bonding-curve.js";
 import { WalletScorer } from "../src/wallet-scorer.js";
 import { PumpFunLogParser } from "../src/parser.js";
 import { RaydiumMigrationModel } from "../src/raydium-migration.js";
+import { SignalGenerator } from "../src/signal-generator.js";
 import { type PumpTradeEvent } from "../src/types.js";
 
 test("Bonding Curve: accurately computes price, market cap, and graduation progress", () => {
@@ -174,4 +175,100 @@ test("Raydium Migration: simulates sell with 0.25% fee and price impact", () => 
   assert.ok(sellSim.amountOut > 0n);
   assert.ok(sellSim.priceImpactPercent >= 0);
   assert.ok(sellSim.effectivePrice < pool.priceSolPerToken);
+});
+
+test("Signal Generator: generates high-confidence BUY signal when Elite trader buys", () => {
+  const scorer = new WalletScorer();
+  const eliteTrader = "EliteWhale_007";
+
+  // Build profitable history
+  scorer.ingestTrade({
+    mint: "MintA",
+    trader: eliteTrader,
+    isBuy: true,
+    solAmountLamports: 10_000_000_000n,
+    tokenAmountUnits: 100_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 100,
+    timestamp: 1000,
+  });
+  scorer.ingestTrade({
+    mint: "MintA",
+    trader: eliteTrader,
+    isBuy: false,
+    solAmountLamports: 25_000_000_000n, // +15 SOL profit
+    tokenAmountUnits: 100_000_000n,
+    virtualSolReserves: 40_000_000_000n,
+    virtualTokenReserves: 900_000_000_000_000n,
+    slot: 200,
+    timestamp: 2000,
+  });
+
+  const generator = new SignalGenerator(scorer, 60);
+
+  // Elite trader enters new token
+  const newBuyTrade: PumpTradeEvent = {
+    mint: "NewMintAlpha",
+    trader: eliteTrader,
+    isBuy: true,
+    solAmountLamports: 5_000_000_000n,
+    tokenAmountUnits: 50_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 300,
+    timestamp: 3000,
+  };
+
+  const signal = generator.evaluateTrade(newBuyTrade);
+  assert.ok(signal !== null);
+  assert.equal(signal?.signalType, "BUY");
+  assert.equal(signal?.trader, eliteTrader);
+  assert.ok(signal?.confidencePercent! >= 70);
+  assert.ok(signal?.suggestedAction.includes("COPY_BUY"));
+});
+
+test("Signal Generator: suppresses signal for Unprofitable trader (retail filter)", () => {
+  const scorer = new WalletScorer();
+  const lossTrader = "LossTrader_999";
+
+  scorer.ingestTrade({
+    mint: "MintB",
+    trader: lossTrader,
+    isBuy: true,
+    solAmountLamports: 5_000_000_000n,
+    tokenAmountUnits: 50_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 100,
+    timestamp: 1000,
+  });
+  scorer.ingestTrade({
+    mint: "MintB",
+    trader: lossTrader,
+    isBuy: false,
+    solAmountLamports: 1_000_000_000n, // -4 SOL loss
+    tokenAmountUnits: 50_000_000n,
+    virtualSolReserves: 35_000_000_000n,
+    virtualTokenReserves: 950_000_000_000_000n,
+    slot: 200,
+    timestamp: 2000,
+  });
+
+  const generator = new SignalGenerator(scorer, 60);
+
+  const lossBuyTrade: PumpTradeEvent = {
+    mint: "NewMintBeta",
+    trader: lossTrader,
+    isBuy: true,
+    solAmountLamports: 2_000_000_000n,
+    tokenAmountUnits: 20_000_000n,
+    virtualSolReserves: 30_000_000_000n,
+    virtualTokenReserves: 1_000_000_000_000_000n,
+    slot: 300,
+    timestamp: 3000,
+  };
+
+  const signal = generator.evaluateTrade(lossBuyTrade);
+  assert.equal(signal, null); // Suppressed
 });

@@ -70,3 +70,16 @@ export interface TokenCreationEvent {
   slot: number;
   timestamp: number;
 }
+
+export interface CopyTradeSignal {
+  mint: string;
+  signalType: "BUY" | "SELL";
+  trader: string;
+  traderTier: "Elite" | "Profitable";
+  traderScore: number;
+  winRate: number;
+  confidencePercent: number;
+  solAmountLamports: bigint;
+  suggestedAction: string;
+  timestamp: number;
+}
