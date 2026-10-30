@@ -105,4 +105,38 @@ if (process.argv[1]?.includes("index")) {
       `${idx + 1}. [${p.tier}] ${p.wallet} | Score: ${p.traderScore}/100 | WinRate: ${p.winRate * 100}% | NetPnL: ${p.realizedPnlSol > 0 ? "+" : ""}${p.realizedPnlSol} SOL | Vol: ${p.totalVolumeSol} SOL`
     );
   });
+
+  // 4. Raydium CPMM Migration
+  console.log("\n[Raydium CPMM Graduation & Migration]:");
+  const pool = RaydiumMigrationModel.createMigratedPool(state.mint, 85_000_000_000n);
+  console.log({
+    mint: pool.mint,
+    solReserves: `${Number(pool.solReservesLamports) / 1e9} SOL`,
+    tokenReserves: `${(Number(pool.tokenReservesUnits) / 1e6).toLocaleString()} Tokens`,
+    lpSupply: pool.lpSupply.toString(),
+    priceSolPerToken: pool.priceSolPerToken.toExponential(6),
+  });
+
+  // 5. Post-Migration Raydium Swap
+  const swapSim = RaydiumMigrationModel.simulateBuy(pool, 2_000_000_000n);
+  console.log("\n[Raydium Swap Simulation (2 SOL In)]:", {
+    tokensReceived: (Number(swapSim.amountOut) / 1e6).toFixed(2),
+    feeDeductedLamports: `${Number(swapSim.feeAmount) / 1e9} SOL (0.25%)`,
+    priceImpactPercent: `${swapSim.priceImpactPercent.toFixed(2)}%`,
+    effectivePriceSolPerToken: swapSim.effectivePrice.toExponential(6),
+  });
+
+  // 6. Copy-Trade Signal Generator
+  console.log("\n[Algorithmic Copy-Trade Signal Generator]:");
+  const signalGen = new SignalGenerator(scorer);
+  const signal = signalGen.evaluateTrade(mockTrades[0], state);
+  if (signal) {
+    console.log({
+      signalType: signal.signalType,
+      confidence: `${signal.confidencePercent}%`,
+      traderTier: signal.traderTier,
+      trader: signal.trader,
+      suggestedAction: signal.suggestedAction,
+    });
+  }
 }
