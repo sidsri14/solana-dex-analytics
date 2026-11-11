@@ -80,3 +80,11 @@ npm run build
 
 ## License
 MIT
+
+---
+
+## Services & Documentation
+
+- **Contract Engineering ($60/hr)** — Solana indexing, DeFi analytics, Rust & TypeScript systems: [Upwork Profile](https://www.upwork.com/freelancers/~01f93f1a56b9ef1b8d)
+- **Portfolio, Articles & Starter Kits**: [sidsri14.github.io](https://sidsri14.github.io/)
+- **Direct Contact**: `sidsri1502@gmail.com`
