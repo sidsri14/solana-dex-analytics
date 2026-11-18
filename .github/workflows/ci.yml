@@ -7,6 +7,16 @@ on:
     branches: [ main, master ]
 
 jobs:
+  driftguard:
+    name: DriftGuard Contract Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run DriftGuard
+        uses: sidsri14/driftguard@v1
+
   build-and-test:
     runs-on: ubuntu-latest
 

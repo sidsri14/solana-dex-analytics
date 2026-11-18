@@ -5,6 +5,7 @@ High-performance TypeScript analytics engine for Solana memecoin bonding curves,
 [![Test Status](https://img.shields.io/badge/tests-9%2F9%20passing-brightgreen)](#)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DriftGuard CI Guard](https://img.shields.io/badge/DriftGuard-CI%20Guard%20Passed-blue)](https://github.com/marketplace/actions/driftguard-ci-guard)
 
 ---
 
